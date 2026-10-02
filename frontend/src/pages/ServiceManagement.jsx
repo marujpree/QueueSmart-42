@@ -7,10 +7,16 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useServices } from "../context/ServiceContext";
+import { useNotifications } from "../context/NotificationContext";
+import ServiceForm from "../components/ServiceForm";
 import "./ServiceManagement.css";
 
 export default function ServiceManagement() {
-  const { services, getQueueLength } = useServices();
+  const { services, getQueueLength, getServiceById, addService, updateService } = useServices();
+  const { addNotification } = useNotifications();
+
+  // success message shown above table after saving
+  const [banner, setBanner] = useState(null);
 
   // list, create, or edit screen
   const [mode, setMode] = useState("list");
@@ -18,12 +24,15 @@ export default function ServiceManagement() {
   // id of service being edited
   const [editingId, setEditingId] = useState(null);
 
+  // opening the form hides old banner
   const startCreate = () => {
+    setBanner(null);
     setEditingId(null);
     setMode("create");
   };
 
   const startEdit = (id) => {
+    setBanner(null);
     setEditingId(id);
     setMode("edit");
   };
@@ -33,6 +42,32 @@ export default function ServiceManagement() {
     setEditingId(null);
     setMode("list");
   };
+
+  // the form validates, this saves
+  const handleSave = (values) => {
+    const isCreating = mode === "create";
+
+    if (isCreating) {
+      addService(values);
+    } else {
+      updateService(editingId, values);
+    }
+
+    // admin notification
+    addNotification({
+      audience: "admin",
+      type: "status_change",
+      title: isCreating ? "Service created" : "Service updated",
+      message: `${values.name} was saved.`,
+    });
+
+    // sends success banner
+    setBanner(`${values.name} was ${isCreating ? "created" : "updated"}.`);
+    backToList();
+  };
+
+  // the service being edited
+  const editingService = mode === "edit" ? getServiceById(editingId) : null;
 
   return (
     <div className="svc-page">
@@ -47,6 +82,21 @@ export default function ServiceManagement() {
 
       {mode === "list" ? (
         <>
+          {/* success banner after save */}
+          {banner && (
+            <div className="svc-banner" role="status">
+              <span>{banner}</span>
+              <button
+                type="button"
+                className="svc-banner-close"
+                aria-label="Dismiss message"
+                onClick={() => setBanner(null)}
+              >
+                &times;
+              </button>
+            </div>
+          )}
+
           <div className="svc-toolbar">
             <p className="svc-subtitle">Create and edit the services students can queue for.</p>
             <button type="button" className="svc-button" onClick={startCreate}>
@@ -97,15 +147,24 @@ export default function ServiceManagement() {
           )}
         </>
       ) : (
-        // create and edit both show this for now
-        <div className="svc-placeholder">
-          <p>
-            Form coming next ({mode === "create" ? "new service" : `editing service #${editingId}`})
-          </p>
-          <button type="button" className="svc-button" onClick={backToList}>
-            Back
-          </button>
-        </div>
+        mode === "edit" && !editingService ? (
+          // edit service not found case
+          <div className="svc-placeholder">
+            <p>That service could not be found.</p>
+            <button type="button" className="svc-button" onClick={backToList}>
+              Back
+            </button>
+          </div>
+        ) : (
+          // fresh form each time
+          <ServiceForm
+            key={editingId ?? "new"}
+            service={editingService}
+            existingServices={services}
+            onSave={handleSave}
+            onCancel={backToList}
+          />
+        )
       )}
     </div>
   );
