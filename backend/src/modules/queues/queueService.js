@@ -128,8 +128,12 @@ const serveNext = (serviceId) => {
   notifyServed(entry.userId, service.name);
 
   getQueue(service.id)
-  .slice(0, 2)
-  .forEach((next) => notifyAlmostReady(next.userId, service.name));
+    .slice(0, 2)
+    .filter((next) => !next.almostReadyNotified)
+    .forEach((next) => {
+      next.almostReadyNotified = true;
+      notifyAlmostReady(next.userId, service.name);
+    });
   return { servedEntry: entry, ...getQueueDetails(service.id) };
 };
 
@@ -170,13 +174,14 @@ return getQueueDetails(service.id)
 
 const moveEntry = (serviceId, entryId, direction) => {
   if (direction !== "up" && direction !== "down") {
-    throw badRequest("Direction must be \"up\" or\down\".", { direction: "Direction must be \"up\" or \"down\"." });
+    throw badRequest("Direction must be \"up\" or \"down\".", { direction: "Direction must be \"up\" or \"down\"." });
   }
     const { service } = findEntry(serviceId, entryId);
     const line = getQueue(service.id);
     const index = line.findIndex((e) => e.id === Number(entryId));
     const target = index + (direction === "up" ? -1 : 1);
-    if (target < 0 || target >= line.length) throw conflict ("That person is already at the end of the line.");
+    if (target < 0) throw conflict("That person is already at the front of the line.");
+    if (target >= line.length) throw conflict("That person is already at the end of the line.");
 
     line.forEach((e, i ) => { e.orderAt = i; });
 

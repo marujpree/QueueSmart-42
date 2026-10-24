@@ -34,10 +34,10 @@ router.delete("/:serviceId/entries/:entryId", requireAdmin, (req, res) => {
 });
 
 router.patch("/:serviceId/entries/:entryId", requireAdmin, (req, res) => {
-  res.json(setPriority(req.params.serviceId, req.params.entryId, req.body.priority));
+  res.json(setPriority(req.params.serviceId, req.params.entryId, req.body?.priority));
 });
 
 router.post("/:serviceId/entries/:entryId/move", requireAdmin, (req, res) => {
-  res.json(moveEntry(req.params.serviceId, req.params.entryId, req.body.direction));
+  res.json(moveEntry(req.params.serviceId, req.params.entryId, req.body?.direction));
 });
 module.exports = router;
